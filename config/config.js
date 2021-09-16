@@ -1,6 +1,6 @@
 const Sequelize = require("sequelize");
 const sequelize = new Sequelize("postgres", "postgres", "12345", {
-  host: process.env.HOST,
+  host: process.env.HOSTS,
   dialect: "postgres",
   define: {
     timestamps: false,
