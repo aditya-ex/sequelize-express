@@ -58,31 +58,34 @@ const login = async (req, res) => {
           process.env.SECRET_KEY,
           { expiresIn: "1h" }
         );
-        let token = access_token;
+        console.log(access_token);
+        let token = {
+          token: access_token,
+        };
         let createdToken = await Token.create(token);
         res.send({
-            error: 0,
-            message: "token sent successfully",
-            data: createdToken,
-          });
+          error: 0,
+          message: "token sent successfully",
+          data: createdToken,
+        });
       } else {
         res.send({
-            error: 1,
-            message: "password don't match",
-            data: [],
+          error: 1,
+          message: "password don't match",
+          data: [],
         });
       }
     } else {
       res.send({
-          error: 1,
-          message: "user not found",
-          data: [],
+        error: 1,
+        message: "user not found",
+        data: [],
       });
     }
   } catch (err) {
     res.send({
-        error: 1,
-        message: err.message || "failed to send token"
+      error: 1,
+      message: err.message || "failed to send token",
     });
     console.log(err);
   }
