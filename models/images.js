@@ -1,13 +1,12 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/config");
 const user = require("./user");
-const token = sequelize.define("token", {
-  token: {
+const images = sequelize.define("images", {
+  images: {
     type: DataTypes.STRING,
   },
 });
 
-user.hasOne(token, {foreignKey: "userId", as: "token" });
-
-token.sync();
-module.exports = token;
+user.hasMany(images, {foreignKey: "userId",as: "images"});
+images.sync();
+module.exports = images;
