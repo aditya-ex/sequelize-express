@@ -125,7 +125,7 @@ const deleteUser = async (req, res) => {
 };
 
 const saveAddress = async (req, res) => {
-  try{
+  try {
     let user = req.user;
     let address = {
       userId: user.id,
@@ -133,15 +133,15 @@ const saveAddress = async (req, res) => {
       state: req.body.state,
       city: req.body.city,
       pin_code: req.body.pin_code,
-      phone_no: req.body.phone_no, 
+      phone_no: req.body.phone_no,
     };
     let createdAddress = await Address.create(address);
     res.send({
-      error:0,
+      error: 0,
       message: "address saved successfully",
       data: createdAddress,
     });
-  }catch(err){
+  } catch (err) {
     console.log(err);
     res.send({
       error: 1,
@@ -151,7 +151,7 @@ const saveAddress = async (req, res) => {
   }
 };
 
-const localUpload = async (req, res) =>{
+const localUpload = async (req, res) => {
   try {
     let user = req.user;
     let image = {
@@ -164,7 +164,7 @@ const localUpload = async (req, res) =>{
       message: "image saved successfully",
       data: createdImage,
     });
-  }catch(err){
+  } catch (err) {
     res.send({
       error: 0,
       message: err.message || "failed to save image",
@@ -174,12 +174,13 @@ const localUpload = async (req, res) =>{
 };
 
 const uploadOnline = async (req, res) => {
-  try{
+  try {
+    console.log(req.files.image);
     let user = req.user;
     let data = req.files.image;
     let image = {
       userId: user.id,
-      images: data,
+      images: data.tempFilePath,
     };
     let createdImage = await Images.create(image);
     await cloudinary.uploader.upload(data.tempFilePath);
@@ -188,7 +189,8 @@ const uploadOnline = async (req, res) => {
       message: "image saved successfully",
       data: createdImage,
     });
-  }catch(err){
+  } catch (err) {
+    console.log(err);
     res.send({
       error: 1,
       message: err.message || "failed to saved image",
@@ -197,4 +199,101 @@ const uploadOnline = async (req, res) => {
   }
 };
 
-module.exports = { register, login, deleteUser, saveAddress, localUpload, uploadOnline};
+const forgotPassword = async (req, res) => {
+  try {
+    const user = await User.findOne({ where: { email: req.body.email } });
+    if (!user) res.send("user doesn't exist");
+    let reset_token = jwt.sign({ userId: user.id }, process.env.SECRET_KEY, {
+      expiresIn: "600s",
+    });
+    let token = {
+      userId: user.id,
+      token: reset_token,
+    };
+    await Token.create(token);
+    const link = `${process.env.BASE_URL}/verify_reset_password/${token.token}`;
+    await sendEmail(user.email, "reset password link", link);
+    res.send({
+      error: 0,
+      message: "reset token send",
+      data: reset_token,
+    });
+  } catch (err) {
+    console.log(err);
+    res.send({
+      error: 1,
+      message: err.message || "can't send reset token",
+      data: err,
+    });
+  }
+};
+
+const resetPassword = async (req, res) => {
+  let resetToken = req.params.password_reset_token;
+  try {
+    await jwt.verify(resetToken, process.env.SECRET_KEY);
+    let token = await Token.findOne({ where: { token: resetToken } });
+    let user = await User.findOne({ where: { id: token.userId } });
+    if (token) {
+      let password = req.body.password;
+      const salt = await bcrypt.genSalt(10);
+      let encryptedPassword = await bcrypt.hash(password, salt);
+      await User.update(
+        { password: encryptedPassword },
+        { where: { id: token.userId } }
+      );
+      await Token.destroy({ where: { token: token.token } });
+      await sendEmail(
+        user.email,
+        "reset password",
+        "password reset successfull"
+      );
+      res.send({
+        error: 0,
+        message: "reset password successfully",
+        data: [],
+      });
+    }
+  } catch (err) {
+    console.log(err);
+    res.send({
+      error: 1,
+      message: err.message || "failed to reset password",
+    });
+  }
+};
+
+const list = async (req, res) => {
+  try {
+    let perPage = 10;
+    let page = Math.max(0, req.params.page);
+    let userList = await User.findAll({
+      offset: perPage * (page - 1),
+      limit: perPage,
+      order: [["username", "ASC"]],
+    });
+    res.send({
+      error: 0,
+      message: "user list found",
+      data: userList,
+    });
+  } catch (err) {
+    res.send({
+      error: 1,
+      message: err.message || "can't find user list",
+      data: err,
+    });
+  }
+};
+
+module.exports = {
+  register,
+  login,
+  deleteUser,
+  saveAddress,
+  localUpload,
+  uploadOnline,
+  forgotPassword,
+  resetPassword,
+  list,
+};
