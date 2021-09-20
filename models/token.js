@@ -7,7 +7,7 @@ const token = sequelize.define("token", {
   },
 });
 
-user.hasOne(token, {foreignKey: "userId", as: "token" });
+user.hasMany(token, {foreignKey: "userId", as: "token" });
 
 token.sync();
 module.exports = token;

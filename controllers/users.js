@@ -6,9 +6,24 @@ const bcrypt = require("bcrypt");
 const cloudinary = require("cloudinary");
 const sendEmail = require("../utils/sendEmail");
 const jwt = require("jsonwebtoken");
-const { send } = require("process");
-const { createTransport } = require("nodemailer");
 require("dotenv").config();
+
+function onSuccess(data) {
+  let response = {
+    error: 0,
+    message: "success",
+    data: data,
+  };
+  return response;
+}
+function onFailure(data){
+  let response = {
+    error: 1,
+    message: data.message || "failure",
+    data: data || [],
+  };
+  return response;
+}
 
 cloudinary.config({
   cloud_name: process.env.CLOUD_NAME,
@@ -19,8 +34,8 @@ cloudinary.config({
 const register = async (req, res) => {
   try {
     const salt = await bcrypt.genSalt(10);
-    password = req.body.password;
-    con_password = req.body.con_password;
+    let password = req.body.password;
+    let con_password = req.body.con_password;
     if (password == con_password) {
       let secretPassword = await bcrypt.hash(password, salt);
       let user = {
@@ -36,20 +51,14 @@ const register = async (req, res) => {
         "registration",
         "user regitered successfully"
       );
-      res.send({
-        error: 0,
-        message: "user created successfully",
-        data: createdUser,
-      });
+      res.send(
+        onSuccess(createdUser)
+      );
     } else {
-      res.send("password don't match");
+      res.send(onFailure());
     }
   } catch (err) {
-    res.send({
-      error: 1,
-      message: err.message || "failed to save new user",
-      data: err,
-    });
+    res.send(onFailure(err));
   }
 };
 
@@ -74,30 +83,15 @@ const login = async (req, res) => {
           token: access_token,
         };
         let createdToken = await Token.create(token);
-        res.send({
-          error: 0,
-          message: "token sent successfully",
-          data: createdToken,
-        });
+        res.send(onSuccess(createdToken));
       } else {
-        res.send({
-          error: 1,
-          message: "password don't match",
-          data: [],
-        });
+        res.send(onFailure());
       }
     } else {
-      res.send({
-        error: 1,
-        message: "user not found",
-        data: [],
-      });
+      res.send(onFailure());
     }
   } catch (err) {
-    res.send({
-      error: 1,
-      message: err.message || "failed to send token",
-    });
+    res.send(onFailure(err));
     console.log(err);
   }
 };
@@ -109,18 +103,10 @@ const deleteUser = async (req, res) => {
     await Token.destroy({ where: { userId: user.id } });
     await Address.destroy({ where: { userId: user.id } });
     await Images.destroy({ where: { userId: user.id } });
-    res.send({
-      error: 0,
-      message: "data deleted successfully",
-      data: [],
-    });
+    res.send(onSuccess());
   } catch (err) {
     console.log(err);
-    res.send({
-      error: 1,
-      message: err.message || "failed to delete data",
-      data: err,
-    });
+    res.send(onFailure(err));
   }
 };
 
@@ -136,18 +122,10 @@ const saveAddress = async (req, res) => {
       phone_no: req.body.phone_no,
     };
     let createdAddress = await Address.create(address);
-    res.send({
-      error: 0,
-      message: "address saved successfully",
-      data: createdAddress,
-    });
+    res.send(onSuccess(createdAddress));
   } catch (err) {
     console.log(err);
-    res.send({
-      error: 1,
-      message: err.message || "failed to save address",
-      data: err,
-    });
+    res.send(onFailure(err));
   }
 };
 
@@ -159,17 +137,9 @@ const localUpload = async (req, res) => {
       images: req.file.path,
     };
     let createdImage = await Images.create(image);
-    res.send({
-      error: 0,
-      message: "image saved successfully",
-      data: createdImage,
-    });
+    res.send(onSuccess(createdImage));
   } catch (err) {
-    res.send({
-      error: 0,
-      message: err.message || "failed to save image",
-      data: err,
-    });
+    res.send(onFailure(err));
   }
 };
 
@@ -182,20 +152,12 @@ const uploadOnline = async (req, res) => {
       userId: user.id,
       images: data.tempFilePath,
     };
-    let createdImage = await Images.create(image);
     await cloudinary.uploader.upload(data.tempFilePath);
-    res.send({
-      error: 0,
-      message: "image saved successfully",
-      data: createdImage,
-    });
+    let createdImage = await Images.create(image);
+    res.send(onSuccess(createdImage));
   } catch (err) {
     console.log(err);
-    res.send({
-      error: 1,
-      message: err.message || "failed to saved image",
-      data: err,
-    });
+    res.send(onFailure(err));
   }
 };
 
@@ -213,18 +175,10 @@ const forgotPassword = async (req, res) => {
     await Token.create(token);
     const link = `${process.env.BASE_URL}/verify_reset_password/${token.token}`;
     await sendEmail(user.email, "reset password link", link);
-    res.send({
-      error: 0,
-      message: "reset token send",
-      data: reset_token,
-    });
+    res.send(onSuccess(reset_token));
   } catch (err) {
     console.log(err);
-    res.send({
-      error: 1,
-      message: err.message || "can't send reset token",
-      data: err,
-    });
+    res.send(onFailure(err));
   }
 };
 
@@ -248,18 +202,13 @@ const resetPassword = async (req, res) => {
         "reset password",
         "password reset successfull"
       );
-      res.send({
-        error: 0,
-        message: "reset password successfully",
-        data: [],
-      });
+      res.send(onSuccess());
+    }else{
+      res.send(onFailure());
     }
   } catch (err) {
     console.log(err);
-    res.send({
-      error: 1,
-      message: err.message || "failed to reset password",
-    });
+    res.send(onFailure(err));
   }
 };
 
@@ -270,19 +219,11 @@ const list = async (req, res) => {
     let userList = await User.findAll({
       offset: perPage * (page - 1),
       limit: perPage,
-      order: [["username", "ASC"]],
+      order: ["username", "ASC"],
     });
-    res.send({
-      error: 0,
-      message: "user list found",
-      data: userList,
-    });
+    res.send(onSuccess(userList));
   } catch (err) {
-    res.send({
-      error: 1,
-      message: err.message || "can't find user list",
-      data: err,
-    });
+    res.send(onFailure(err));
   }
 };
 
@@ -296,4 +237,6 @@ module.exports = {
   forgotPassword,
   resetPassword,
   list,
+  onFailure,
+  onSuccess,
 };

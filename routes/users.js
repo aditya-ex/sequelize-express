@@ -17,7 +17,7 @@ let upload = multer({ storage: storage });
 router.post("/register", users.register);
 router.post("/login", users.login);
 router.post("/address", auth, users.saveAddress);
-router.put("/delete", auth, users.deleteUser);
+router.delete("/delete", auth, users.deleteUser);
 router.post("/local_upload", auth, upload.single("image"), users.localUpload);
 router.post("/online_upload", auth, users.uploadOnline);
 router.post("/forgot_password", users.forgotPassword);

@@ -19,7 +19,7 @@ const address = sequelize.define("address", {
   },
 });
 
-user.hasOne(address, {foreignKey:"userId", as: "address"});
+user.hasMany(address, {foreignKey:"userId", as: "address"});
 address.sync();
 
 module.exports = address;

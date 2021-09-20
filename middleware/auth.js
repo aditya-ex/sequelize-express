@@ -1,6 +1,7 @@
 const Token = require("../models/token");
 const User = require("../models/user");
 const jwt = require("jsonwebtoken");
+const users = require("../controllers/users");
 require("dotenv").config();
 
 const authentication = async (req, res, next) => {
@@ -9,19 +10,13 @@ const authentication = async (req, res, next) => {
     try {
       await jwt.verify(headerToken, process.env.SECRET_KEY);
       const token = await Token.findOne({ where: { token: headerToken } });
-      const user = await User.findOne({ where: { id: token.userId } });
-      req.user = user;
+      req.user = token;
       next();
     } catch (err) {
-      console.log(err);
-      res.send({
-        error: 1,
-        message: err.message || "an error occured",
-        data: err,
-      });
+      res.send(users.onFailure(err));
     }
   } else {
-    return res.send("no token provided");
+    res.send(users.onFailure());
   }
 };
 
