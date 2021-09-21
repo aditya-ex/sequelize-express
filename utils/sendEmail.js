@@ -17,7 +17,7 @@ const sendEmail = async (email, subject, text) => {
       text: text,
     });
   } catch (err) {
-    throw err;
+    throw new Error(err);
   }
 };
 module.exports = sendEmail;

@@ -2,10 +2,10 @@ const Address = require("../models/address");
 const Images = require("../models/images");
 const Token = require("../models/token");
 const User = require("../models/user");
-const bcrypt = require("bcrypt");
-const cloudinary = require("cloudinary");
-const sendEmail = require("../utils/sendEmail");
 const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
+const sendEmail = require("../utils/sendEmail");
+const cloudinary = require("cloudinary");
 require("dotenv").config();
 
 function onSuccess(data) {
@@ -25,7 +25,7 @@ function onFailure(data){
   return response;
 }
 
-cloudinary.config({
+cloudinary.v2.config({
   cloud_name: process.env.CLOUD_NAME,
   api_key: process.env.API_KEY,
   api_secret: process.env.API_SECRET,
@@ -71,6 +71,7 @@ const login = async (req, res) => {
         user.password
       );
       if (validPassword) {
+        await Token.destroy({where: {userId: user.id}})
         let access_token = jwt.sign(
           {
             userId: user.id,
@@ -145,7 +146,6 @@ const localUpload = async (req, res) => {
 
 const uploadOnline = async (req, res) => {
   try {
-    console.log(req.files.image);
     let user = req.user;
     let data = req.files.image;
     let image = {
