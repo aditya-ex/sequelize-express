@@ -2,6 +2,7 @@ const Address = require("../models/address");
 const Images = require("../models/images");
 const Token = require("../models/token");
 const User = require("../models/user");
+const fs = require("fs");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const sendEmail = require("../utils/sendEmail");
@@ -16,7 +17,7 @@ function onSuccess(data) {
   };
   return response;
 }
-function onFailure(data){
+function onFailure(data) {
   let response = {
     error: 1,
     message: data.message || "failure",
@@ -51,9 +52,7 @@ const register = async (req, res) => {
         "registration",
         "user regitered successfully"
       );
-      res.send(
-        onSuccess(createdUser)
-      );
+      res.send(onSuccess(createdUser));
     } else {
       res.send(onFailure());
     }
@@ -71,7 +70,7 @@ const login = async (req, res) => {
         user.password
       );
       if (validPassword) {
-        await Token.destroy({where: {userId: user.id}})
+        await Token.destroy({ where: { userId: user.id } });
         let access_token = jwt.sign(
           {
             userId: user.id,
@@ -93,7 +92,6 @@ const login = async (req, res) => {
     }
   } catch (err) {
     res.send(onFailure(err));
-    console.log(err);
   }
 };
 
@@ -106,7 +104,6 @@ const deleteUser = async (req, res) => {
     await Images.destroy({ where: { userId: user.id } });
     res.send(onSuccess());
   } catch (err) {
-    console.log(err);
     res.send(onFailure(err));
   }
 };
@@ -125,7 +122,6 @@ const saveAddress = async (req, res) => {
     let createdAddress = await Address.create(address);
     res.send(onSuccess(createdAddress));
   } catch (err) {
-    console.log(err);
     res.send(onFailure(err));
   }
 };
@@ -133,9 +129,12 @@ const saveAddress = async (req, res) => {
 const localUpload = async (req, res) => {
   try {
     let user = req.user;
+    let img = fs.readFileSync(req.file.path);
+    let encoded_image = img.toString("base64");
     let image = {
       userId: user.id,
-      images: req.file.path,
+      imageURL: null,
+      images: Buffer.from(encoded_image, "base64"),
     };
     let createdImage = await Images.create(image);
     res.send(onSuccess(createdImage));
@@ -144,15 +143,31 @@ const localUpload = async (req, res) => {
   }
 };
 
+const getLocalImage = async (req, res) => {
+  let id = req.params.id;
+  if (id) {
+    try {
+      let foundImage = await Images.findOne({ where: { id: id } });
+      res.contentType("image/jpeg");
+      res.send(foundImage.images);
+    } catch (err) {
+      res.send(onFailure(err));
+    }
+  } else {
+    res.send(onFailure());
+  }
+};
+
 const uploadOnline = async (req, res) => {
   try {
     let user = req.user;
-    let data = req.files.image;
+    let data = req.file.path;
+    let uploadedImage = await cloudinary.v2.uploader.upload(data);
     let image = {
       userId: user.id,
-      images: data.tempFilePath,
+      images: [],
+      imageURL: uploadedImage.secure_url,
     };
-    await cloudinary.uploader.upload(data.tempFilePath);
     let createdImage = await Images.create(image);
     res.send(onSuccess(createdImage));
   } catch (err) {
@@ -177,7 +192,6 @@ const forgotPassword = async (req, res) => {
     await sendEmail(user.email, "reset password link", link);
     res.send(onSuccess(reset_token));
   } catch (err) {
-    console.log(err);
     res.send(onFailure(err));
   }
 };
@@ -203,11 +217,10 @@ const resetPassword = async (req, res) => {
         "password reset successfull"
       );
       res.send(onSuccess());
-    }else{
+    } else {
       res.send(onFailure());
     }
   } catch (err) {
-    console.log(err);
     res.send(onFailure(err));
   }
 };
@@ -217,9 +230,12 @@ const list = async (req, res) => {
     let perPage = 10;
     let page = Math.max(0, req.params.page);
     let userList = await User.findAll({
+      include: [
+        { model: Address, as: "address" },
+        { model: Images, as: "images" },
+      ],
       offset: perPage * (page - 1),
       limit: perPage,
-      order: ["username", "ASC"],
     });
     res.send(onSuccess(userList));
   } catch (err) {
@@ -233,6 +249,7 @@ module.exports = {
   deleteUser,
   saveAddress,
   localUpload,
+  getLocalImage,
   uploadOnline,
   forgotPassword,
   resetPassword,
